@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#74182d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ayala Cutroom</title>
+<style>
+:root{
+  --burg:#74182d; --burg2:#4d1020; --gold:#caa65b; --cream:#f6efe4;
+  --paper:#fffaf2; --ink:#2d1e1f; --muted:#776c66; --line:#dccfbd;
+  --char:#241d1f; --shadow:0 16px 45px rgba(55,27,31,.12);
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#efe6d8 0,#f7f1e8 35%,#efe7dc 100%);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.app{max-width:1240px;margin:auto;min-height:100vh;background:rgba(255,250,242,.82);box-shadow:0 0 70px rgba(67,39,38,.08)}
+header{position:sticky;top:0;z-index:20;background:rgba(246,239,228,.94);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.brandbar{display:flex;align-items:center;gap:16px;padding:16px 22px}
+.logo{width:62px;height:62px;border-radius:18px;background:var(--burg);border:1px solid var(--gold);display:grid;place-items:center;box-shadow:var(--shadow)}
+.logo img{width:52px;height:52px;border-radius:14px}
+.brand h1{margin:0;font:700 27px Georgia,serif;letter-spacing:.08em;color:var(--burg2)}
+.brand p{margin:2px 0 0;color:#a77732;font:italic 16px Georgia,serif}
+.top-actions{margin-left:auto;display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:#fffaf4;color:var(--ink);padding:10px 14px;border-radius:14px}
+.btn.primary{background:var(--burg);color:white;border-color:var(--burg)}
+.btn.gold{background:#f4e7c7;border-color:#d8bd7e;color:#513719}
+.hero{padding:42px 24px 26px;text-align:center}
+.kicker{letter-spacing:.27em;color:var(--burg);font-size:12px;text-transform:uppercase}
+.hero h2{font:700 clamp(42px,8vw,84px) Georgia,serif;margin:10px 0 5px;color:#351f21}
+.hero p{font:24px Georgia,serif;color:#5f5149;max-width:760px;margin:0 auto}
+.workspace{padding:0 22px 40px}
+.panel{background:rgba(255,252,247,.95);border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panel-head h3{margin:0;font:700 21px Georgia,serif}
+.project-row{display:grid;grid-template-columns:1.2fr .9fr auto;gap:12px;padding:16px}
+.field{display:flex;flex-direction:column;gap:6px}
+label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+input[type=text],input[type=number],select{width:100%;padding:12px;border:1px solid var(--line);border-radius:13px;background:white;color:var(--ink)}
+.dropzone{margin:0 16px 16px;border:2px dashed #cdbda7;border-radius:20px;padding:26px;text-align:center;background:linear-gradient(135deg,#fffaf5,#f7ede0)}
+.dropzone.drag{border-color:var(--burg);background:#f8e8ec}
+.dropzone .big{font:700 24px Georgia,serif}
+.dropzone p{color:var(--muted)}
+.cards{padding:16px;display:grid;gap:12px}
+.clip{display:grid;grid-template-columns:160px 1fr;gap:14px;border:1px solid var(--line);border-radius:18px;padding:12px;background:white}
+.clip video{width:100%;height:120px;object-fit:cover;border-radius:13px;background:#181212}
+.clip-title{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.clip-title strong{font-family:Georgia,serif;font-size:18px}
+.pill{font-size:11px;padding:5px 8px;border-radius:999px;border:1px solid var(--line);background:#faf4e9;color:#64584f}
+.clip-controls{display:grid;grid-template-columns:repeat(4,minmax(100px,1fr));gap:8px;margin-top:9px}
+.clip-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.mini{padding:7px 9px;border-radius:10px;border:1px solid var(--line);background:#fffaf5}
+.mini.danger{color:#8b1e32}
+.cutlist{font-size:12px;color:var(--muted);margin-top:8px}
+.studio-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.voice-box,.export-box{padding:18px}
+.voice-box h4,.export-box h4{font:700 18px Georgia,serif;margin:0 0 10px}
+.voice-row{display:grid;grid-template-columns:1fr 110px 130px;gap:8px;align-items:end}
+.status{padding:11px 14px;border-radius:13px;background:#f5ecdf;border:1px solid var(--line);color:#5b4d45;font-size:13px}
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.export-card{padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.export-card strong{display:block}
+.progress{height:10px;border-radius:999px;background:#e6dac9;overflow:hidden;margin-top:12px}
+.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--burg),var(--gold));transition:width .2s}
+.note{font-size:12px;color:var(--muted);line-height:1.45}
+footer{text-align:center;color:#7e7169;padding:28px;font-size:12px}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+@media(max-width:760px){
+  .brandbar{padding:12px}
+  .logo{width:54px;height:54px}.logo img{width:46px;height:46px}
+  .brand h1{font-size:21px}.brand p{font-size:14px}
+  .top-actions .btn:not(.primary){display:none}
+  .hero{padding:30px 16px 20px}.hero p{font-size:20px}
+  .workspace{padding:0 10px 30px}
+  .project-row{grid-template-columns:1fr}
+  .clip{grid-template-columns:1fr}
+  .clip video{height:190px}
+  .clip-controls{grid-template-columns:1fr 1fr}
+  .studio-grid{grid-template-columns:1fr}
+  .voice-row{grid-template-columns:1fr 1fr}
+  .voice-row .field:first-child{grid-column:1/-1}
+  .export-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brandbar">
+    <div class="logo"><img src="icon-192.png" alt=""></div>
+    <div class="brand"><h1>AYALA CUTROOM</h1><p>The Simple Editing Room</p></div>
+    <div class="top-actions">
+      <button class="btn" id="saveProject">Save Project</button>
+      <button class="btn primary" id="addFilesTop">+ Add Clips</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="kicker">Record · Cut · Join · Narrate · Submit</div>
+  <h2>Cutroom</h2>
+  <p>Turn several class takes into one clean, Canvas-ready video without fighting a complicated editor.</p>
+</section>
+
+<main class="workspace">
+  <section class="panel">
+    <div class="panel-head">
+      <h3>Project</h3>
+      <span class="pill" id="clipCount">0 clips</span>
+    </div>
+    <div class="project-row">
+      <div class="field"><label>Project name</label><input id="projectName" type="text" value="Class Video Project"></div>
+      <div class="field"><label>Course / note</label><input id="courseNote" type="text" placeholder="e.g., SOCW role play"></div>
+      <button class="btn gold" id="recordVideo">🎥 Record Video</button>
+    </div>
+    <div class="dropzone" id="dropzone">
+      <div class="big">Drop video files here</div>
+      <p>MP4, MOV, WebM and most common browser-readable video files.</p>
+      <button class="btn primary" id="chooseFiles">Choose Videos</button>
+      <input id="fileInput" type="file" accept="video/*" multiple hidden>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h3>Filmstrip</h3>
+      <div><button class="btn" id="previewAll">▶ Preview sequence</button></div>
+    </div>
+    <div id="clips" class="cards"><div class="empty">Your takes will appear here in order. Add two or three takes, trim them, and Cutroom will join them at export.</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h3>Voice Studio & Export</h3><span class="pill">non-destructive</span></div>
+    <div class="studio-grid">
+      <div class="voice-box">
+        <h4>Add narration after recording</h4>
+        <p class="note">Choose a clip, pick where the narration should begin, then record. Your original video file is never changed.</p>
+        <div class="voice-row">
+          <div class="field"><label>Clip</label><select id="voiceClip"><option>No clips yet</option></select></div>
+          <div class="field"><label>Start sec</label><input id="voiceStart" type="number" min="0" step=".1" value="0"></div>
+          <div class="field"><label>Audio mode</label><select id="voiceMode"><option value="mix">Mix with original</option><option value="replace">Replace original</option></select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn primary" id="recordVoice">🎙 Record Voice</button>
+          <button class="btn" id="deleteVoice">Remove voice</button>
+        </div>
+        <div class="status" id="voiceStatus" style="margin-top:10px">No narration recorded.</div>
+      </div>
+      <div class="export-box">
+        <h4>Make it Canvas-ready</h4>
+        <div class="export-grid">
+          <div class="export-card"><strong>Standard MP4</strong><span class="note">720p, balanced quality/size.</span><button class="btn primary" data-export="standard" style="margin-top:8px">Export MP4</button></div>
+          <div class="export-card"><strong>Small MP4</strong><span class="note">540p, smaller file for upload limits.</span><button class="btn primary" data-export="small" style="margin-top:8px">Make Smaller</button></div>
+          <div class="export-card"><strong>Audio Only</strong><span class="note">MP3 from the finished sequence.</span><button class="btn" data-export="mp3" style="margin-top:8px">Export MP3</button></div>
+          <div class="export-card"><strong>Project archive</strong><span class="note">Save your edit plan as JSON.</span><button class="btn" id="downloadProject" style="margin-top:8px">Download Project</button></div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div class="status" id="exportStatus" style="margin-top:10px">Ready. Export runs locally in your browser.</div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>AYALA CUTROOM · v1.0 · Your source clips remain untouched.</footer>
+</div>
+
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const clipsEl = $('#clips');
+let clips = [];
+let nextId = 1;
+let voiceRecorder = null, voiceChunks = [];
+let videoRecorder = null, videoChunks = [];
+let mediaStream = null;
+const { createFFmpeg, fetchFile } = FFmpeg;
+let ffmpeg = null;
+
+function fmt(n){ if(!isFinite(n)) return '0:00'; const m=Math.floor(n/60),s=Math.floor(n%60); return `${m}:${String(s).padStart(2,'0')}`; }
+function uid(){ return 'c'+(nextId++); }
+function updateVoiceSelect(){
+  const s=$('#voiceClip'); s.innerHTML='';
+  if(!clips.length){ s.innerHTML='<option>No clips yet</option>'; return; }
+  clips.forEach((c,i)=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=`${i+1}. ${c.name}`; s.appendChild(o); });
+  updateVoiceStatus();
+}
+function updateVoiceStatus(){
+  const c=clips.find(x=>x.id===$('#voiceClip').value);
+  if(!c){ $('#voiceStatus').textContent='No narration recorded.'; return; }
+  $('#voiceStatus').textContent = c.voice ? `Narration attached at ${c.voice.start.toFixed(1)}s · ${c.voice.mode==='replace'?'replace':'mix'} mode.` : 'No narration recorded for this clip.';
+}
+function durationFor(c){return Math.max(0,(c.out??c.duration)-(c.in??0));}
+function totalDuration(){return clips.reduce((a,c)=>a+durationFor(c),0);}
+function render(){
+  $('#clipCount').textContent=`${clips.length} clip${clips.length===1?'':'s'} · ${fmt(totalDuration())}`;
+  if(!clips.length){ clipsEl.innerHTML='<div class="empty">Your takes will appear here in order. Add two or three takes, trim them, and Cutroom will join them at export.</div>'; updateVoiceSelect(); return;}
+  clipsEl.innerHTML='';
+  clips.forEach((c,i)=>{
+    const div=document.createElement('div'); div.className='clip';
+    div.innerHTML=`
+      <video controls preload="metadata" src="${c.url}"></video>
+      <div>
+        <div class="clip-title"><strong>${i+1}. ${c.name}</strong><span class="pill">${fmt(c.duration)}</span><span class="pill">kept ${fmt(durationFor(c))}</span></div>
+        <div class="clip-controls">
+          <div class="field"><label>Trim in (sec)</label><input data-k="in" data-id="${c.id}" type="number" min="0" max="${c.duration}" step=".1" value="${c.in.toFixed(1)}"></div>
+          <div class="field"><label>Trim out (sec)</label><input data-k="out" data-id="${c.id}" type="number" min="0" max="${c.duration}" step=".1" value="${c.out.toFixed(1)}"></div>
+          <div class="field"><label>Cut start</label><input data-cut="start" data-id="${c.id}" type="number" min="0" max="${c.duration}" step=".1" value="0"></div>
+          <div class="field"><label>Cut end</label><input data-cut="end" data-id="${c.id}" type="number" min="0" max="${c.duration}" step=".1" value="0"></div>
+        </div>
+        <div class="clip-actions">
+          <button class="mini" data-act="addcut" data-id="${c.id}">✂ Remove marked section</button>
+          <button class="mini" data-act="up" data-id="${c.id}">↑ Earlier</button>
+          <button class="mini" data-act="down" data-id="${c.id}">↓ Later</button>
+          <button class="mini danger" data-act="remove" data-id="${c.id}">Remove clip</button>
+        </div>
+        <div class="cutlist">${c.cuts.length?`Cuts removed: ${c.cuts.map(x=>`${x[0].toFixed(1)}–${x[1].toFixed(1)}s`).join(', ')}`:'No middle cuts.'}${c.voice?' · 🎙 narration attached':''}</div>
+      </div>`;
+    clipsEl.appendChild(div);
+  });
+  clipsEl.querySelectorAll('input[data-k]').forEach(inp=>inp.addEventListener('change',e=>{
+    const c=clips.find(x=>x.id===e.target.dataset.id), k=e.target.dataset.k; let v=+e.target.value;
+    if(k==='in') c.in=Math.min(Math.max(0,v),c.out-.05);
+    else c.out=Math.max(Math.min(c.duration,v),c.in+.05);
+    render();
+  }));
+  clipsEl.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',()=>clipAction(b.dataset.act,b.dataset.id)));
+  updateVoiceSelect();
+}
+function clipAction(act,id){
+  const idx=clips.findIndex(c=>c.id===id); if(idx<0)return; const c=clips[idx];
+  if(act==='remove'){URL.revokeObjectURL(c.url); clips.splice(idx,1);}
+  if(act==='up' && idx>0){[clips[idx-1],clips[idx]]=[clips[idx],clips[idx-1]];}
+  if(act==='down' && idx<clips.length-1){[clips[idx+1],clips[idx]]=[clips[idx],clips[idx+1]];}
+  if(act==='addcut'){
+    const s=+document.querySelector(`input[data-cut="start"][data-id="${id}"]`).value;
+    const e=+document.querySelector(`input[data-cut="end"][data-id="${id}"]`).value;
+    if(e>s && s>=c.in && e<=c.out){ c.cuts.push([s,e]); c.cuts.sort((a,b)=>a[0]-b[0]); }
+    else alert('Set a cut start and end inside the kept portion of the clip.');
+  }
+  render();
+}
+async function addFiles(files){
+  for(const f of files){
+    if(!f.type.startsWith('video/')) continue;
+    const url=URL.createObjectURL(f), v=document.createElement('video'); v.preload='metadata'; v.src=url;
+    await new Promise(res=>{v.onloadedmetadata=res; v.onerror=res;});
+    const dur=isFinite(v.duration)?v.duration:0;
+    clips.push({id:uid(),name:f.name,file:f,url,duration:dur,in:0,out:dur,cuts:[],voice:null});
+  }
+  render();
+}
+$('#fileInput').addEventListener('change',e=>addFiles([...e.target.files]));
+['#chooseFiles','#addFilesTop'].forEach(s=>$(s).addEventListener('click',()=>$('#fileInput').click()));
+const dz=$('#dropzone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag')}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag')}));
+dz.addEventListener('drop',e=>addFiles([...e.dataTransfer.files]));
+
+$('#voiceClip').addEventListener('change',updateVoiceStatus);
+$('#recordVoice').addEventListener('click',async()=>{
+  const c=clips.find(x=>x.id===$('#voiceClip').value); if(!c)return alert('Add a video clip first.');
+  if(voiceRecorder && voiceRecorder.state==='recording'){ voiceRecorder.stop(); $('#recordVoice').textContent='🎙 Record Voice'; return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    voiceChunks=[];
+    voiceRecorder=new MediaRecorder(stream);
+    voiceRecorder.ondataavailable=e=>{if(e.data.size)voiceChunks.push(e.data)};
+    voiceRecorder.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(voiceChunks,{type:voiceRecorder.mimeType||'audio/webm'});
+      c.voice={blob,start:+$('#voiceStart').value||0,mode:$('#voiceMode').value};
+      updateVoiceStatus(); render();
+    };
+    voiceRecorder.start(); $('#recordVoice').textContent='■ Stop recording'; $('#voiceStatus').textContent='Recording narration…';
+  }catch(e){alert('Microphone permission is required for narration.');}
+});
+$('#deleteVoice').addEventListener('click',()=>{const c=clips.find(x=>x.id===$('#voiceClip').value); if(c){c.voice=null;updateVoiceStatus();render();}});
+
+$('#recordVideo').addEventListener('click',async()=>{
+  if(videoRecorder && videoRecorder.state==='recording'){videoRecorder.stop(); $('#recordVideo').textContent='🎥 Record Video'; return;}
+  try{
+    mediaStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    videoChunks=[]; videoRecorder=new MediaRecorder(mediaStream);
+    videoRecorder.ondataavailable=e=>{if(e.data.size)videoChunks.push(e.data)};
+    videoRecorder.onstop=async()=>{
+      mediaStream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(videoChunks,{type:videoRecorder.mimeType||'video/webm'});
+      const f=new File([blob],`Cutroom_take_${new Date().toISOString().replace(/[:.]/g,'-')}.webm`,{type:blob.type});
+      await addFiles([f]);
+    };
+    videoRecorder.start(); $('#recordVideo').textContent='■ Stop Recording';
+  }catch(e){alert('Camera and microphone permission are required to record.');}
+});
+
+$('#previewAll').addEventListener('click',async()=>{
+  if(!clips.length)return;
+  for(const c of clips){
+    const v=clipsEl.querySelector(`input[data-k="in"][data-id="${c.id}"]`)?.closest('.clip')?.querySelector('video');
+    if(!v)continue; v.currentTime=c.in; await v.play();
+    await new Promise(res=>{const stop=()=>{if(v.currentTime>=c.out || v.ended){v.pause();v.removeEventListener('timeupdate',stop);res();}};v.addEventListener('timeupdate',stop);});
+  }
+});
+
+function projectJson(){
+  return {version:1,name:$('#projectName').value,note:$('#courseNote').value,clips:clips.map(c=>({name:c.name,duration:c.duration,in:c.in,out:c.out,cuts:c.cuts,voice:c.voice?{start:c.voice.start,mode:c.voice.mode}:null}))};
+}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);}
+$('#downloadProject').addEventListener('click',()=>downloadBlob(new Blob([JSON.stringify(projectJson(),null,2)],{type:'application/json'}),`${($('#projectName').value||'Cutroom_Project').replace(/[^\w-]+/g,'_')}.json`));
+$('#saveProject').addEventListener('click',()=>{localStorage.setItem('ayala-cutroom-project-meta',JSON.stringify({name:$('#projectName').value,note:$('#courseNote').value,edit:projectJson()})); alert('Edit plan saved on this device. Source video files are not duplicated.');});
+
+async function ensureFFmpeg(){
+  if(ffmpeg && ffmpeg.isLoaded())return;
+  $('#exportStatus').textContent='Loading the Cutroom video engine… first use may take a moment.';
+  ffmpeg=createFFmpeg({log:false,corePath:'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'});
+  await ffmpeg.load();
+}
+function setProgress(p,msg){$('#progressBar').style.width=`${Math.round(p*100)}%`;if(msg)$('#exportStatus').textContent=msg;}
+function keepSegments(c){
+  let segs=[], cursor=c.in;
+  const cuts=c.cuts.filter(x=>x[1]>c.in&&x[0]<c.out).map(x=>[Math.max(x[0],c.in),Math.min(x[1],c.out)]).sort((a,b)=>a[0]-b[0]);
+  for(const [s,e] of cuts){if(s>cursor)segs.push([cursor,s]);cursor=Math.max(cursor,e);}
+  if(cursor<c.out)segs.push([cursor,c.out]);
+  return segs.length?segs:[[c.in,c.out]];
+}
+async function exportVideo(mode){
+  if(!clips.length)return alert('Add at least one clip.');
+  try{
+    await ensureFFmpeg(); setProgress(.04,'Preparing source clips…');
+    const outputs=[];
+    for(let i=0;i<clips.length;i++){
+      const c=clips[i], inName=`in${i}_${c.name.replace(/[^\w.]+/g,'_')}`;
+      ffmpeg.FS('writeFile',inName,await fetchFile(c.file));
+      const segs=keepSegments(c);
+      let partNames=[];
+      for(let j=0;j<segs.length;j++){
+        const [s,e]=segs[j], out=`part_${i}_${j}.mp4`;
+        const scale=mode==='small'?'scale=-2:540':'scale=-2:720';
+        await ffmpeg.run('-ss',String(s),'-to',String(e),'-i',inName,'-vf',scale,'-c:v','mpeg4','-q:v',mode==='small'?'8':'5','-c:a','aac','-b:a','128k','-movflags','+faststart',out);
+        partNames.push(out);
+      }
+      let clipOut=`clip_${i}.mp4`;
+      if(partNames.length===1){ ffmpeg.FS('writeFile',clipOut,ffmpeg.FS('readFile',partNames[0]));}
+      else{
+        const list=partNames.map(n=>`file '${n}'`).join('\n'); const listName=`list_${i}.txt`;ffmpeg.FS('writeFile',listName,new TextEncoder().encode(list));
+        await ffmpeg.run('-f','concat','-safe','0','-i',listName,'-c','copy',clipOut);
+      }
+      // voiceover: mix if supplied; if ffmpeg rejects due source audio edge cases, keep base clip.
+      if(c.voice){
+        try{
+          const vn=`voice_${i}.webm`; ffmpeg.FS('writeFile',vn,await fetchFile(c.voice.blob));
+          const voiced=`voiced_${i}.mp4`;
+          const delay=Math.max(0,Math.round(c.voice.start*1000));
+          if(c.voice.mode==='replace'){
+            await ffmpeg.run('-i',clipOut,'-i',vn,'-filter_complex',`[1:a]adelay=${delay}|${delay}[va]`,'-map','0:v','-map','[va]','-c:v','copy','-c:a','aac','-shortest',voiced);
+          }else{
+            await ffmpeg.run('-i',clipOut,'-i',vn,'-filter_complex',`[1:a]adelay=${delay}|${delay}[va];[0:a][va]amix=inputs=2:duration=first:dropout_transition=2[a]`,'-map','0:v','-map','[a]','-c:v','copy','-c:a','aac',voiced);
+          }
+          clipOut=voiced;
+        }catch(e){console.warn('Voice mix skipped',e);}
+      }
+      outputs.push(clipOut); setProgress(.1+.65*((i+1)/clips.length),`Processing clip ${i+1} of ${clips.length}…`);
+    }
+    const concatList=outputs.map(n=>`file '${n}'`).join('\n'); ffmpeg.FS('writeFile','final-list.txt',new TextEncoder().encode(concatList));
+    if(mode==='mp3'){
+      await ffmpeg.run('-f','concat','-safe','0','-i','final-list.txt','-vn','-c:a','libmp3lame','-b:a','160k','final.mp3');
+      const data=ffmpeg.FS('readFile','final.mp3'); downloadBlob(new Blob([data.buffer],{type:'audio/mpeg'}),`${safeName()}.mp3`);
+    }else{
+      await ffmpeg.run('-f','concat','-safe','0','-i','final-list.txt','-c','copy','-movflags','+faststart','final.mp4');
+      const data=ffmpeg.FS('readFile','final.mp4'); downloadBlob(new Blob([data.buffer],{type:'video/mp4'}),`${safeName()}${mode==='small'?'_small':''}.mp4`);
+    }
+    setProgress(1,'Finished — your exported file is ready.');
+  }catch(e){
+    console.error(e); setProgress(0,'Export could not finish in this browser. Try Chrome desktop for the strongest video support.');
+    alert('Cutroom could not finish this export. Large or unusual source files can exceed browser memory. Try Chrome on a computer, or use the Small MP4 preset.');
+  }
+}
+function safeName(){return ($('#projectName').value||'Ayala_Cutroom').trim().replace(/[^\w-]+/g,'_');}
+document.querySelectorAll('[data-export]').forEach(b=>b.addEventListener('click',()=>exportVideo(b.dataset.export)));
+
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
+const meta=JSON.parse(localStorage.getItem('ayala-cutroom-project-meta')||'null');
+if(meta){$('#projectName').value=meta.name||$('#projectName').value;$('#courseNote').value=meta.note||'';}
+render();
+</script>
+</body>
+</html>
