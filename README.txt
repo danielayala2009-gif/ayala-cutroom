@@ -1,24 +1,19 @@
-AYALA CUTROOM v1.2 — LARGE-FILE MOUNTED EXPORT ENGINE
+AYALA CUTROOM v1.2.1 — WORKER-LOAD FIX
 
 Upload all 6 files in this folder to the ROOT of the existing ayala-cutroom GitHub repository.
 
-WHAT CHANGED
-- Upgrades Cutroom from ffmpeg.wasm 0.11 to the 0.12 API.
-- Uses WORKERFS to MOUNT each original File for reading instead of first copying the entire source video into FFmpeg's in-memory filesystem.
-- Renders each kept section separately, then joins the reduced pieces.
-- Unmounts the original source immediately after its clip is rendered.
-- Deletes temporary parts after each join.
-- Keeps Standard 720p, Small 540p, Ultra Small 360p, MP3, narration, trimming, internal cuts, clip reordering, preview, and project JSON.
-- Original source files remain untouched.
-
-WHY
-The v1.0/v1.1 export failures occurred while Safari was processing multi-minute source files. v1.2 specifically targets the large input-file memory duplication that occurs when a browser copies a File into the WebAssembly filesystem.
+WHAT THIS FIXES
+- v1.2 was loading the FFmpeg browser wrapper from a CDN. Its internal class worker then tried to start directly from that CDN origin, which browsers can block.
+- v1.2.1 converts that class worker to a blob URL and passes it explicitly as classWorkerURL.
+- Keeps the v1.2 WORKERFS large-file mounted input approach and all existing Cutroom editing/export features.
 
 AFTER DEPLOYMENT
 1. Wait for GitHub Pages to turn green.
-2. Hard-refresh the live site (Command+Shift+R).
-3. Confirm the footer says v1.2.
-4. Load the same two test videos.
-5. Try Small MP4 first. If needed, try Ultra Small.
+2. Open Ayala Cutroom in Chrome.
+3. Hard refresh with Command+Shift+R.
+4. Confirm footer says v1.2.1.
+5. Load the two test videos.
+6. Click Ultra Small first.
+7. The status should move beyond “Loading Cutroom v1.2.1 large-file engine…” into processing.
 
-Note: Browser-based FFmpeg is still constrained by each browser's WebAssembly memory behavior. v1.2 materially reduces input-memory pressure but cannot remove browser limits completely.
+Original source videos remain untouched.

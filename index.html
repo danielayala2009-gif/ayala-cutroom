@@ -164,7 +164,7 @@ footer{text-align:center;color:#7e7169;padding:28px;font-size:12px}
     </div>
   </section>
 </main>
-<footer>AYALA CUTROOM · v1.2 · Your source clips remain untouched.</footer>
+<footer>AYALA CUTROOM · v1.2.1 · Your source clips remain untouched.</footer>
 </div>
 
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
@@ -316,7 +316,7 @@ $('#saveProject').addEventListener('click',()=>{localStorage.setItem('ayala-cutr
 
 async function ensureFFmpeg(){
   if(ffmpeg && ffmpeg.loaded) return;
-  $('#exportStatus').textContent='Loading Cutroom v1.2 large-file engine…';
+  $('#exportStatus').textContent='Loading Cutroom v1.2.1 large-file engine…';
   ffmpeg = new FFmpeg();
 
   ffmpeg.on('progress', ({progress}) => {
@@ -326,9 +326,14 @@ async function ensureFFmpeg(){
   });
 
   const baseURL='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+  const classWorkerURL = await toBlobURL(
+    'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js',
+    'text/javascript'
+  );
   await ffmpeg.load({
     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    classWorkerURL
   });
 }
 function setProgress(p,msg){$('#progressBar').style.width=`${Math.round(p*100)}%`;if(msg)$('#exportStatus').textContent=msg;}
@@ -454,7 +459,7 @@ async function exportVideo(mode){
   try{
     await ensureFFmpeg();
     const actualMode=mode==='mp3'?'small':mode;
-    setProgress(.03,'Cutroom v1.2: source files mounted without copying them into FFmpeg memory.');
+    setProgress(.03,'Cutroom v1.2.1: source files mounted without copying them into FFmpeg memory.');
     let merged=null;
 
     for(let i=0;i<clips.length;i++){
@@ -481,7 +486,7 @@ async function exportVideo(mode){
     console.error(e);
     setProgress(0,'Export stopped.');
     alert(
-      'Cutroom v1.2 could not finish this export in this browser. '+
+      'Cutroom v1.2.1 could not finish this export in this browser. '+
       'The original files are now mounted instead of copied into FFmpeg memory. '+
       'If Safari still reaches its memory ceiling, the same project should be tried in Chrome or Firefox on the Mac.'
     );
