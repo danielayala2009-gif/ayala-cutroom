@@ -164,11 +164,9 @@ footer{text-align:center;color:#7e7169;padding:28px;font-size:12px}
     </div>
   </section>
 </main>
-<footer>AYALA CUTROOM · v1.2.1 · Your source clips remain untouched.</footer>
+<footer>AYALA CUTROOM · v1.3 · Your source clips remain untouched.</footer>
 </div>
 
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-<script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const clipsEl = $('#clips');
@@ -177,9 +175,10 @@ let nextId = 1;
 let voiceRecorder = null, voiceChunks = [];
 let videoRecorder = null, videoChunks = [];
 let mediaStream = null;
-const { FFmpeg } = FFmpegWASM;
-const { toBlobURL } = FFmpegUtil;
+let FFmpegClass = null;
 let ffmpeg = null;
+let wrapperReady = false;
+let cutroomWorkerURL = null;
 
 function fmt(n){ if(!isFinite(n)) return '0:00'; const m=Math.floor(n/60),s=Math.floor(n%60); return `${m}:${String(s).padStart(2,'0')}`; }
 function uid(){ return 'c'+(nextId++); }
@@ -314,10 +313,77 @@ $('#downloadProject').addEventListener('click',()=>downloadBlob(new Blob([JSON.s
 $('#saveProject').addEventListener('click',()=>{localStorage.setItem('ayala-cutroom-project-meta',JSON.stringify({name:$('#projectName').value,note:$('#courseNote').value,edit:projectJson()})); alert('Edit plan saved on this device. Source video files are not duplicated.');});
 
 
+async function toBlobURLLocal(url,mimeType){
+  const response = await fetch(url,{mode:'cors',cache:'force-cache'});
+  if(!response.ok) throw new Error(`Could not fetch ${url} (${response.status})`);
+  const data = await response.arrayBuffer();
+  return URL.createObjectURL(new Blob([data],{type:mimeType}));
+}
+
+async function loadFFmpegWrapper(){
+  if(wrapperReady && FFmpegClass) return;
+
+  $('#exportStatus').textContent='Loading Cutroom v1.3 browser bridge…';
+
+  const wrapperURL='https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+  const workerURL='https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js';
+
+  // Fetch the tiny wrapper and its class worker as ordinary CORS resources.
+  // The worker itself is then started from a same-origin Blob URL, avoiding
+  // Safari's cross-origin Worker security restriction.
+  const [wrapperResponse, workerResponse] = await Promise.all([
+    fetch(wrapperURL,{mode:'cors',cache:'force-cache'}),
+    fetch(workerURL,{mode:'cors',cache:'force-cache'})
+  ]);
+  if(!wrapperResponse.ok) throw new Error(`FFmpeg wrapper download failed (${wrapperResponse.status})`);
+  if(!workerResponse.ok) throw new Error(`FFmpeg worker download failed (${workerResponse.status})`);
+
+  let wrapperText = await wrapperResponse.text();
+  const workerText = await workerResponse.text();
+  cutroomWorkerURL = URL.createObjectURL(new Blob([workerText],{type:'text/javascript'}));
+
+  // @ffmpeg/ffmpeg 0.12.10's UMD wrapper normally constructs its worker from
+  // the CDN script URL. Patch only that constructor so the Worker uses our
+  // same-origin Blob URL instead.
+  const patterns = [
+    /new Worker\(new URL\(e\.p\+e\.u\(814\),e\.b\),\{type:void 0\}\)/,
+    /new Worker\(new URL\([^)]*814[^)]*\)[^)]*\)/
+  ];
+  let patched = false;
+  for(const pattern of patterns){
+    if(pattern.test(wrapperText)){
+      wrapperText = wrapperText.replace(pattern, "new Worker(globalThis.__CUTROOM_FFMPEG_WORKER_URL,{type:void 0})");
+      patched = true;
+      break;
+    }
+  }
+  if(!patched){
+    throw new Error('Cutroom could not patch the FFmpeg browser worker. The library layout changed.');
+  }
+
+  globalThis.__CUTROOM_FFMPEG_WORKER_URL = cutroomWorkerURL;
+  const wrapperBlobURL = URL.createObjectURL(new Blob([wrapperText],{type:'text/javascript'}));
+
+  await new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src=wrapperBlobURL;
+    s.onload=()=>{ URL.revokeObjectURL(wrapperBlobURL); resolve(); };
+    s.onerror=()=>{ URL.revokeObjectURL(wrapperBlobURL); reject(new Error('Patched FFmpeg wrapper could not start.')); };
+    document.head.appendChild(s);
+  });
+
+  if(!globalThis.FFmpegWASM?.FFmpeg) throw new Error('FFmpeg wrapper loaded but did not expose FFmpegWASM.');
+  FFmpegClass = globalThis.FFmpegWASM.FFmpeg;
+  wrapperReady = true;
+}
+
 async function ensureFFmpeg(){
   if(ffmpeg && ffmpeg.loaded) return;
-  $('#exportStatus').textContent='Loading Cutroom v1.2.1 large-file engine…';
-  ffmpeg = new FFmpeg();
+
+  await loadFFmpegWrapper();
+  $('#exportStatus').textContent='Loading Cutroom v1.3 large-file engine…';
+
+  ffmpeg = new FFmpegClass();
 
   ffmpeg.on('progress', ({progress}) => {
     if(Number.isFinite(progress)){
@@ -325,16 +391,18 @@ async function ensureFFmpeg(){
     }
   });
 
-  const baseURL='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
-  const classWorkerURL = await toBlobURL(
-    'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/814.ffmpeg.js',
-    'text/javascript'
-  );
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    classWorkerURL
+  ffmpeg.on('log', ({message}) => {
+    console.log('[Cutroom FFmpeg]', message);
   });
+
+  const baseURL='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+  const [coreURL, wasmURL] = await Promise.all([
+    toBlobURLLocal(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    toBlobURLLocal(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
+  ]);
+
+  await ffmpeg.load({coreURL, wasmURL});
+  $('#exportStatus').textContent='Ready. Cutroom v1.3 video engine loaded.';
 }
 function setProgress(p,msg){$('#progressBar').style.width=`${Math.round(p*100)}%`;if(msg)$('#exportStatus').textContent=msg;}
 
@@ -459,7 +527,7 @@ async function exportVideo(mode){
   try{
     await ensureFFmpeg();
     const actualMode=mode==='mp3'?'small':mode;
-    setProgress(.03,'Cutroom v1.2.1: source files mounted without copying them into FFmpeg memory.');
+    setProgress(.03,'Cutroom v1.3: source files mounted without copying them into FFmpeg memory.');
     let merged=null;
 
     for(let i=0;i<clips.length;i++){
@@ -486,7 +554,7 @@ async function exportVideo(mode){
     console.error(e);
     setProgress(0,'Export stopped.');
     alert(
-      'Cutroom v1.2.1 could not finish this export in this browser. '+
+      'Cutroom v1.3 could not finish this export in this browser. '+
       'The original files are now mounted instead of copied into FFmpeg memory. '+
       'If Safari still reaches its memory ceiling, the same project should be tried in Chrome or Firefox on the Mac.'
     );
