@@ -1,22 +1,15 @@
-AYALA CUTROOM v1.0 — THE SIMPLE EDITING ROOM
+AYALA CUTROOM v1.1 — LOW-MEMORY EXPORT UPDATE
 
-Upload every file in this folder to the ROOT of the GitHub repository you create for Ayala Cutroom.
+Upload all files in this folder to the ROOT of the existing ayala-cutroom GitHub repository.
 
-Core features:
-- Add multiple video takes by upload or drag-and-drop
-- Record a new take from camera/microphone
-- Reorder clips
-- Trim beginning and end of each clip
-- Mark and remove sections from the middle
-- Record narration and attach it to a chosen clip
-- Export standard 720p MP4
-- Export smaller 540p MP4
-- Export audio-only MP3
-- Download an edit-plan/project JSON
-- Installable PWA for Android
+v1.1 fixes the real-world export failure found with two multi-minute class videos:
+- Processes ONE source clip at a time.
+- Deletes source data from the FFmpeg virtual filesystem as soon as each clip is rendered.
+- Removes multiple marked middle sections in a single render pass per clip.
+- Joins clips incrementally and deletes intermediates.
+- Adds an Ultra Small 360p export preset for tight memory/upload limits.
+- Keeps Standard 720p, Small 540p, MP3, narration, trimming, internal cuts, reordering, and project JSON.
 
-Important:
-- Original source video files are never modified.
-- Export happens locally in the browser with ffmpeg.wasm loaded from a CDN.
-- For long or very large class recordings, desktop Chrome has the most reliable browser memory budget.
-- GitHub Pages must be public for a free GitHub Pages deployment.
+IMPORTANT
+After GitHub Pages redeploys, hard-refresh the site (Command+Shift+R on Mac).
+If installed as a PWA, close/reopen it after deployment so the new service worker updates.

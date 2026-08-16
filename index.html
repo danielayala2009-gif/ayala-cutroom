@@ -154,6 +154,7 @@ footer{text-align:center;color:#7e7169;padding:28px;font-size:12px}
         <div class="export-grid">
           <div class="export-card"><strong>Standard MP4</strong><span class="note">720p, balanced quality/size.</span><button class="btn primary" data-export="standard" style="margin-top:8px">Export MP4</button></div>
           <div class="export-card"><strong>Small MP4</strong><span class="note">540p, smaller file for upload limits.</span><button class="btn primary" data-export="small" style="margin-top:8px">Make Smaller</button></div>
+          <div class="export-card"><strong>Ultra Small MP4</strong><span class="note">360p, emergency low-memory / tight-upload preset.</span><button class="btn" data-export="tiny" style="margin-top:8px">Ultra Small</button></div>
           <div class="export-card"><strong>Audio Only</strong><span class="note">MP3 from the finished sequence.</span><button class="btn" data-export="mp3" style="margin-top:8px">Export MP3</button></div>
           <div class="export-card"><strong>Project archive</strong><span class="note">Save your edit plan as JSON.</span><button class="btn" id="downloadProject" style="margin-top:8px">Download Project</button></div>
         </div>
@@ -163,7 +164,7 @@ footer{text-align:center;color:#7e7169;padding:28px;font-size:12px}
     </div>
   </section>
 </main>
-<footer>AYALA CUTROOM · v1.0 · Your source clips remain untouched.</footer>
+<footer>AYALA CUTROOM · v1.1 · Your source clips remain untouched.</footer>
 </div>
 
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
@@ -319,61 +320,111 @@ async function ensureFFmpeg(){
 function setProgress(p,msg){$('#progressBar').style.width=`${Math.round(p*100)}%`;if(msg)$('#exportStatus').textContent=msg;}
 function keepSegments(c){
   let segs=[], cursor=c.in;
-  const cuts=c.cuts.filter(x=>x[1]>c.in&&x[0]<c.out).map(x=>[Math.max(x[0],c.in),Math.min(x[1],c.out)]).sort((a,b)=>a[0]-b[0]);
-  for(const [s,e] of cuts){if(s>cursor)segs.push([cursor,s]);cursor=Math.max(cursor,e);}
-  if(cursor<c.out)segs.push([cursor,c.out]);
+  const cuts=c.cuts
+    .filter(x=>x[1]>c.in&&x[0]<c.out)
+    .map(x=>[Math.max(x[0],c.in),Math.min(x[1],c.out)])
+    .sort((a,b)=>a[0]-b[0]);
+  for(const [s,e] of cuts){
+    if(s>cursor) segs.push([cursor,s]);
+    cursor=Math.max(cursor,e);
+  }
+  if(cursor<c.out) segs.push([cursor,c.out]);
   return segs.length?segs:[[c.in,c.out]];
 }
+function safeUnlink(name){ try{ ffmpeg.FS('unlink',name); }catch(e){} }
+async function renderOneClip(c,i,mode){
+  const ext=(c.name.split('.').pop()||'mp4').replace(/[^\w]/g,'');
+  const inName=`src_${i}.${ext}`;
+  ffmpeg.FS('writeFile',inName,await fetchFile(c.file));
+
+  const segs=keepSegments(c);
+  const out=`clip_${i}.mp4`;
+  const scale = mode==='tiny' ? 'scale=-2:360' : mode==='small' ? 'scale=-2:540' : 'scale=-2:720';
+  const q = mode==='tiny' ? '12' : mode==='small' ? '9' : '6';
+
+  // One ffmpeg pass per source clip. trim/atrim each kept section, then concat in-memory
+  // inside ffmpeg rather than creating a file for every cut.
+  let filters=[];
+  let concatInputs='';
+  segs.forEach((seg,j)=>{
+    const s=seg[0], e=seg[1];
+    filters.push(`[0:v]trim=start=${s}:end=${e},setpts=PTS-STARTPTS,${scale}[v${j}]`);
+    filters.push(`[0:a]atrim=start=${s}:end=${e},asetpts=PTS-STARTPTS[a${j}]`);
+    concatInputs += `[v${j}][a${j}]`;
+  });
+  filters.push(`${concatInputs}concat=n=${segs.length}:v=1:a=1[v][a]`);
+
+  await ffmpeg.run(
+    '-i',inName,
+    '-filter_complex',filters.join(';'),
+    '-map','[v]','-map','[a]',
+    '-c:v','mpeg4','-q:v',q,
+    '-c:a','aac','-b:a', mode==='tiny'?'96k':'128k',
+    '-movflags','+faststart',
+    out
+  );
+  safeUnlink(inName);
+
+  // Optional voiceover in a second pass, then remove unvoiced output.
+  if(c.voice){
+    try{
+      const vn=`voice_${i}.webm`;
+      ffmpeg.FS('writeFile',vn,await fetchFile(c.voice.blob));
+      const voiced=`voiced_${i}.mp4`;
+      const delay=Math.max(0,Math.round(c.voice.start*1000));
+      if(c.voice.mode==='replace'){
+        await ffmpeg.run('-i',out,'-i',vn,
+          '-filter_complex',`[1:a]adelay=${delay}|${delay}[va]`,
+          '-map','0:v','-map','[va]','-c:v','copy','-c:a','aac','-shortest',voiced);
+      }else{
+        await ffmpeg.run('-i',out,'-i',vn,
+          '-filter_complex',`[1:a]adelay=${delay}|${delay}[va];[0:a][va]amix=inputs=2:duration=first:dropout_transition=2[a]`,
+          '-map','0:v','-map','[a]','-c:v','copy','-c:a','aac',voiced);
+      }
+      safeUnlink(vn); safeUnlink(out);
+      return voiced;
+    }catch(e){ console.warn('Voice mix skipped',e); }
+  }
+  return out;
+}
+async function mergeIncrementally(current,next,step){
+  if(!current) return next;
+  const listName=`merge_${step}.txt`;
+  const merged=`merged_${step}.mp4`;
+  ffmpeg.FS('writeFile',listName,new TextEncoder().encode(`file '${current}'\nfile '${next}'`));
+  await ffmpeg.run('-f','concat','-safe','0','-i',listName,'-c','copy','-movflags','+faststart',merged);
+  safeUnlink(listName); safeUnlink(current); safeUnlink(next);
+  return merged;
+}
 async function exportVideo(mode){
-  if(!clips.length)return alert('Add at least one clip.');
+  if(!clips.length) return alert('Add at least one clip.');
   try{
-    await ensureFFmpeg(); setProgress(.04,'Preparing source clips…');
-    const outputs=[];
+    await ensureFFmpeg();
+    setProgress(.03,'Low-memory export started… processing one clip at a time.');
+    let merged=null;
     for(let i=0;i<clips.length;i++){
-      const c=clips[i], inName=`in${i}_${c.name.replace(/[^\w.]+/g,'_')}`;
-      ffmpeg.FS('writeFile',inName,await fetchFile(c.file));
-      const segs=keepSegments(c);
-      let partNames=[];
-      for(let j=0;j<segs.length;j++){
-        const [s,e]=segs[j], out=`part_${i}_${j}.mp4`;
-        const scale=mode==='small'?'scale=-2:540':'scale=-2:720';
-        await ffmpeg.run('-ss',String(s),'-to',String(e),'-i',inName,'-vf',scale,'-c:v','mpeg4','-q:v',mode==='small'?'8':'5','-c:a','aac','-b:a','128k','-movflags','+faststart',out);
-        partNames.push(out);
-      }
-      let clipOut=`clip_${i}.mp4`;
-      if(partNames.length===1){ ffmpeg.FS('writeFile',clipOut,ffmpeg.FS('readFile',partNames[0]));}
-      else{
-        const list=partNames.map(n=>`file '${n}'`).join('\n'); const listName=`list_${i}.txt`;ffmpeg.FS('writeFile',listName,new TextEncoder().encode(list));
-        await ffmpeg.run('-f','concat','-safe','0','-i',listName,'-c','copy',clipOut);
-      }
-      // voiceover: mix if supplied; if ffmpeg rejects due source audio edge cases, keep base clip.
-      if(c.voice){
-        try{
-          const vn=`voice_${i}.webm`; ffmpeg.FS('writeFile',vn,await fetchFile(c.voice.blob));
-          const voiced=`voiced_${i}.mp4`;
-          const delay=Math.max(0,Math.round(c.voice.start*1000));
-          if(c.voice.mode==='replace'){
-            await ffmpeg.run('-i',clipOut,'-i',vn,'-filter_complex',`[1:a]adelay=${delay}|${delay}[va]`,'-map','0:v','-map','[va]','-c:v','copy','-c:a','aac','-shortest',voiced);
-          }else{
-            await ffmpeg.run('-i',clipOut,'-i',vn,'-filter_complex',`[1:a]adelay=${delay}|${delay}[va];[0:a][va]amix=inputs=2:duration=first:dropout_transition=2[a]`,'-map','0:v','-map','[a]','-c:v','copy','-c:a','aac',voiced);
-          }
-          clipOut=voiced;
-        }catch(e){console.warn('Voice mix skipped',e);}
-      }
-      outputs.push(clipOut); setProgress(.1+.65*((i+1)/clips.length),`Processing clip ${i+1} of ${clips.length}…`);
+      setProgress(.08+.66*(i/clips.length),`Rendering clip ${i+1} of ${clips.length}…`);
+      const out=await renderOneClip(clips[i],i,mode==='mp3'?'small':mode);
+      merged=await mergeIncrementally(merged,out,i);
+      setProgress(.12+.70*((i+1)/clips.length),`Joined ${i+1} of ${clips.length} clips…`);
     }
-    const concatList=outputs.map(n=>`file '${n}'`).join('\n'); ffmpeg.FS('writeFile','final-list.txt',new TextEncoder().encode(concatList));
+
     if(mode==='mp3'){
-      await ffmpeg.run('-f','concat','-safe','0','-i','final-list.txt','-vn','-c:a','libmp3lame','-b:a','160k','final.mp3');
-      const data=ffmpeg.FS('readFile','final.mp3'); downloadBlob(new Blob([data.buffer],{type:'audio/mpeg'}),`${safeName()}.mp3`);
+      await ffmpeg.run('-i',merged,'-vn','-c:a','libmp3lame','-b:a','128k','final.mp3');
+      const data=ffmpeg.FS('readFile','final.mp3');
+      downloadBlob(new Blob([data.buffer],{type:'audio/mpeg'}),`${safeName()}.mp3`);
+      safeUnlink('final.mp3'); safeUnlink(merged);
     }else{
-      await ffmpeg.run('-f','concat','-safe','0','-i','final-list.txt','-c','copy','-movflags','+faststart','final.mp4');
-      const data=ffmpeg.FS('readFile','final.mp4'); downloadBlob(new Blob([data.buffer],{type:'video/mp4'}),`${safeName()}${mode==='small'?'_small':''}.mp4`);
+      // Rename by copying bytes; avoid another ffmpeg encode.
+      const data=ffmpeg.FS('readFile',merged);
+      downloadBlob(new Blob([data.buffer],{type:'video/mp4'}),`${safeName()}${mode==='small'?'_small':mode==='tiny'?'_ultra_small':''}.mp4`);
+      safeUnlink(merged);
     }
-    setProgress(1,'Finished — your exported file is ready.');
+    setProgress(1,'Finished — one merged file has been created.');
   }catch(e){
-    console.error(e); setProgress(0,'Export could not finish in this browser. Try Chrome desktop for the strongest video support.');
-    alert('Cutroom could not finish this export. Large or unusual source files can exceed browser memory. Try Chrome on a computer, or use the Small MP4 preset.');
+    console.error(e);
+    setProgress(0,'Export stopped. Use Ultra Small if memory is still tight.');
+    alert('Cutroom could not finish this export. Version 1.1 now processes one clip at a time, but very large source files can still exceed Safari memory. Try Ultra Small, or Chrome on the Mac for the largest projects.');
   }
 }
 function safeName(){return ($('#projectName').value||'Ayala_Cutroom').trim().replace(/[^\w-]+/g,'_');}
